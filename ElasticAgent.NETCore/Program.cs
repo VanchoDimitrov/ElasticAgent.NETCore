@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using Elastic.Apm;
 using Elastic.Apm.Api;
 
@@ -9,16 +10,16 @@ namespace ElasticAgent.NETCore
         public static async Task Main(string[] args)
         {
             Transactions transactions = new Transactions();
-            await transactions.StartTransaction().ConfigureAwait(false);
-            await transactions.CaptureTransaction().ConfigureAwait(false);
-            await transactions.DeleteTransaction().ConfigureAwait(false);
+            await transactions.StartTransaction();
+            await transactions.CaptureTransaction();
+            await transactions.DeleteTransaction();
 
             Console.ReadKey();
         }
 
         public class Transactions
         {
-            public async Task<Task> StartTransaction()
+            public async Task StartTransaction()
             {
                 var startTransaction = Agent.Tracer.StartTransaction("StartTransaction", "Insert");
 
@@ -36,70 +37,54 @@ namespace ElasticAgent.NETCore
                 {
                     startTransaction.End();
                 }
-                return Task.CompletedTask;
             }
 
-            public Task<Task> CaptureTransaction()
+            public async Task CaptureTransaction()
             {
-                var captureTransaction = Agent.Tracer.CaptureTransaction("CaptureTransaction", "Update", func: async ()
-                    =>
+                await Agent.Tracer.CaptureTransaction("CaptureTransaction", "Update", func: async () =>
                 {
                     await Person.Update(1);
                 });
-
-                return Task.FromResult(Task.CompletedTask);
             }
 
-            public Task<Task> DeleteTransaction()
+            public async Task DeleteTransaction()
             {
-                Agent.Tracer.CaptureTransaction("DeleteTransaction", "Delete", async () =>
+                await Agent.Tracer.CaptureTransaction("DeleteTransaction", "Delete", async () =>
                 {
                     await Person.Delete(2);
                 });
-                return Task.FromResult(Task.CompletedTask);
             }
         }
 
         // Simple simulation of CRUD.
         public class Person
         {
-            public async Task<Task> Insert()
+            public async Task Insert()
             {
                 await Task.Delay(1);
-
                 Console.WriteLine("Insert person");
-
-                return Task.CompletedTask;
             }
 
             public static async Task<int> Update(int personId)
             {
-                return await Agent.Tracer.CurrentTransaction.CaptureSpan("Person", "Update", func: async ()
-                     =>
+                return await Agent.Tracer.CurrentTransaction.CaptureSpan("Person", "Update", func: async () =>
                 {
                     await Task.Delay(1);
-
                     Console.WriteLine($"Person {personId} updated.");
-
                     return personId;
                 });
             }
 
-            public static async Task<Task> Delete(int personId)
+            public static async Task Delete(int personId)
             {
                 await Task.Delay(1);
-
                 Console.WriteLine($"Person with ID {personId} was not deleted. Please check!");
-
                 throw new Exception("Intentional exception");
             }
 
-            public async Task<Task> GetPersons()
+            public Task GetPersons()
             {
-                await Task.Delay(1);
-
                 Console.WriteLine("All persons returned");
-
                 return Task.CompletedTask;
             }
         }
